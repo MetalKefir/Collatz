@@ -3,18 +3,30 @@ class Program
 {
     static void Main(string[] args)
     {
-        for (int i = 5;; i++)
+        Parallel.For(1, long.MaxValue, new ParallelOptions { MaxDegreeOfParallelism = 10 }, (number) =>
         {
-            Console.WriteLine($"Number: {i} : Collatz:{Collatz(i, out var powerOfTwo)} : Power of two:{powerOfTwo}");
-        }
+            var (collatzConverg, powerOfTwo, collatzSteps, convergPower) = Collatz(number);
+            Console.WriteLine($"Number: {number} : Collatz:{collatzConverg} : Power:{convergPower}");
+        });
     }
 
-    static bool Collatz(int number, out bool powerOfTwo)
+    static (bool collatzConverg, bool powerOfTwo, ulong collatzSteps, ulong convergPower) Collatz(long number)
     {
-        powerOfTwo = false;
-        for (int i = number; i != 1;)
+        bool powerOfTwo = false;
+        ulong collatzSteps = 0;
+        ulong convergPower = 0;
+        for (long i = number; i != 1; collatzSteps++)
         {
-            powerOfTwo = PowerOfTwo(i);
+            if (!powerOfTwo)
+            {
+                powerOfTwo = PowerOfTwo(i);
+            }
+
+            if (powerOfTwo)
+            {
+                convergPower++;
+            }
+
             if (i % 2 == 0)
             {
                 i = EvenNumber(i);
@@ -25,20 +37,20 @@ class Program
             }
         }
 
-        return true;
+        return (true, powerOfTwo, collatzSteps, convergPower);
     }
 
-    static int EvenNumber(int number)
+    static long EvenNumber(long number)
     {
         return number / 2;
     }
 
-    static int OddNumber(int number)
+    static long OddNumber(long number)
     {
         return (3 * number) + 1;
     }
 
-    static bool PowerOfTwo(int number)
+    static bool PowerOfTwo(long number)
     {
         return ((number) & (number - 1)) == 0;
     }
