@@ -1,12 +1,61 @@
-﻿namespace Collatz;
+﻿using System.Collections.Concurrent;
+
+namespace Collatz;
+
+public class MultiThreadFileWriter
+{
+    private static ConcurrentQueue<string> _textToWrite = new();
+    private CancellationTokenSource _source = new();
+    private CancellationToken _token;
+
+    public MultiThreadFileWriter()
+    {
+        _token = _source.Token;
+        Task.Run(WriteToFile, _token);
+    }
+
+    public void WriteLine(string line)
+    {
+        _textToWrite.Enqueue(line);
+    }
+
+    public void Stop() => _source.Cancel();
+
+    private async void WriteToFile()
+    {
+        while (true)
+        {
+            if (_token.IsCancellationRequested)
+            {
+                return;
+            }
+            using StreamWriter writer = File.AppendText("D:\\Collatz.csv");
+            while (_textToWrite.TryDequeue(out string? textLine))
+            {
+                await writer.WriteLineAsync(textLine);
+            }
+            writer.Flush();
+
+            if(_textToWrite.IsEmpty)
+            {
+                Console.WriteLine("DONE");
+            }
+        }
+    }
+}
+
 class Program
 {
     static void Main(string[] args)
     {
-        Parallel.For(1, long.MaxValue, new ParallelOptions { MaxDegreeOfParallelism = 10 }, (number) =>
+        var writer = new MultiThreadFileWriter();
+
+        writer.WriteLine("Number&Collatz&Power&Steps&ConvergPower");
+
+        Parallel.For(1, 2_000_000, new ParallelOptions { MaxDegreeOfParallelism = 10 }, (number) =>
         {
             var (collatzConverg, powerOfTwo, collatzSteps, convergPower) = Collatz(number);
-            Console.WriteLine($"Number: {number} : Collatz:{collatzConverg} : Power:{convergPower}");
+            writer.WriteLine($"{number}&{collatzConverg}&{powerOfTwo}&{collatzSteps}&{convergPower}");
         });
     }
 
